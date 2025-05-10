@@ -1,0 +1,206 @@
+import datetime
+
+def get_valid_date():
+    """
+    Prompts the user to enter a date and validates the input.
+
+    Returns:
+        datetime.date: The date entered by the user.  Returns None on error.
+    """
+    while True:
+        date_str = input("Enter date (YYYY-MM-DD): ")
+        try:
+            return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            print("Invalid date format. Please use-MM-DD.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
+
+def get_valid_amount():
+    """
+    Prompts the user to enter an amount and validates the input.
+
+    Returns:
+        float: The amount entered by the user. Returns None on error.
+    """
+    while True:
+        amount_str = input("Enter amount: ")
+        try:
+            amount = float(amount_str)
+            if amount > 0:
+                return amount
+            else:
+                print("Amount must be greater than zero.")
+        except ValueError:
+            print("Invalid amount format. Please enter a number.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
+
+def get_valid_category(categories):
+    """
+    Prompts the user to enter a category and validates the input.
+
+    Args:
+        categories (list): A list of valid expense categories.
+
+    Returns:
+        str: The category entered by the user. Returns None on error.
+    """
+    if not categories:
+        print("No categories available. Please set up categories first.")
+        return None
+
+    while True:
+        print("Available Categories:", ", ".join(categories))
+        category = input("Enter category: ")
+        if category in categories:
+            return category
+        else:
+            print("Invalid category. Please choose from the list.")
+
+def add_expense(expenses, categories):
+    """
+    Adds a new expense to the list of expenses.
+
+    Args:
+        expenses (list): The list of expenses.
+        categories (list): The list of valid expense categories.
+    """
+    date = get_valid_date()
+    if date is None:
+        print("Failed to add expense: Invalid date.")
+        return
+
+    amount = get_valid_amount()
+    if amount is None:
+        print("Failed to add expense: Invalid amount.")
+        return
+
+    category = get_valid_category(categories)
+    if category is None:
+        print("Failed to add expense: Invalid category.")
+        return
+
+    description = input("Enter description: ")
+    expense = {"date": date.isoformat(), "amount": amount, "category": category, "description": description}
+    expenses.append(expense)
+    print("Expense added successfully.")
+
+def view_expenses(expenses):
+    """
+    Retrieves and displays all stored expenses with validation.
+
+    Args:
+        expenses (list): The list of expenses.
+    """
+    if not expenses:
+        print("No expenses to display.")
+        return
+
+    print("\n--- All Expenses ---")
+    for expense in expenses:
+        # Validate that all required keys are present and their values are not None
+        if all(key in expense and expense[key] is not None for key in ["date", "category", "amount", "description"]):
+            try:
+                # Attempt to convert the date string to a date object for display
+                display_date = datetime.datetime.strptime(expense['date'], "%Y-%m-%d").date()
+                print(
+                    f"Date: {display_date}, "
+                    f"Category: {expense['category']}, "
+                    f"Amount: {expense['amount']}, "
+                    f"Description: {expense['description']}"
+                )
+            except ValueError:
+                print(f"Skipping invalid date format: {expense}")
+        else:
+            print("Skipping incomplete expense entry:", expense)
+
+def set_budget():
+    """
+    Prompts the user to enter their monthly budget and validates it.
+
+    Returns:
+        float: The monthly budget entered by the user, or None on error.
+    """
+    while True:
+        budget_str = input("Enter your monthly budget: ")
+        try:
+            budget = float(budget_str)
+            if budget > 0:
+                return budget
+            else:
+                print("Budget must be greater than zero.")
+        except ValueError:
+            print("Invalid budget format. Please enter a number.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
+
+def calculate_total_expenses(expenses):
+    """
+    Calculates the total expenses from the list of expenses.
+
+    Args:
+        expenses (list): The list of expenses.
+
+    Returns:
+        float: The total expenses, or 0 if there are no expenses or an error occurs.
+    """
+    total = 0
+    if not expenses:
+        return 0  # Return 0 if the list is empty
+
+    for expense in expenses:
+        # Check if the 'amount' key exists and its value is not None
+        if 'amount' in expense and expense['amount'] is not None:
+            try:
+                amount = float(expense['amount'])  # Ensure the amount is a float
+                total += amount
+            except ValueError:
+                print(f"Skipping expense with invalid amount: {expense}")
+                # Consider logging this error for further investigation
+        else:
+            print(f"Skipping expense with missing amount: {expense}")
+            # Consider logging this error.
+    return total
+
+def display_budget_status(budget, expenses):
+    """
+    Displays the budget status (remaining balance or budget exceeded warning).
+
+    Args:
+        budget (float): The user's monthly budget.
+        expenses (list): The list of expenses.
+    """
+    if budget is None:
+        print("No budget set.")
+        return
+
+    total_expenses = calculate_total_expenses(expenses)
+    remaining_balance = budget - total_expenses
+
+    if total_expenses > budget:
+        print("You have exceeded your budget!")
+        print(f"Total Expenses: {total_expenses:.2f}, Budget: {budget:.2f}, Overspent by: {total_expenses - budget:.2f}")
+    else:
+        print(f"You have {remaining_balance:.2f} left for the month.")
+        print(f"Total Expenses: {total_expenses:.2f}, Budget: {budget:.2f}")
+
+def main():
+    """
+    Main function to demonstrate the expense tracker with budgeting.
+    """
+    expenses = []
+    categories = ["Food", "Housing", "Transportation", "Entertainment", "Utilities", "Other"]
+    budget = set_budget() #set budget
+    # Add some initial expenses for testing
+    add_expense(expenses, categories)
+    add_expense(expenses, categories)
+    add_expense(expenses, categories)
+    view_expenses(expenses)
+    display_budget_status(budget, expenses) #show status
+
+if __name__ == "__main__":
+    main()

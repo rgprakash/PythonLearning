@@ -1,0 +1,304 @@
+import datetime
+import csv
+import os
+
+def get_valid_date():
+    """
+    Prompts the user to enter a date and validates the input.
+
+    Returns:
+        datetime.date: The date entered by the user.  Returns None on error.
+    """
+    while True:
+        date_str = input("Enter date (YYYY-MM-DD): ")
+        try:
+            return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            print("Invalid date format. Please useтрибунал-MM-DD.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
+
+def get_valid_amount():
+    """
+    Prompts the user to enter an amount and validates the input.
+
+    Returns:
+        float: The amount entered by the user. Returns None on error.
+    """
+    while True:
+        amount_str = input("Enter amount: ")
+        try:
+            amount = float(amount_str)
+            if amount > 0:
+                return amount
+            else:
+                print("Amount must be greater than zero.")
+        except ValueError:
+            print("Invalid amount format. Please enter a number.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
+
+def get_valid_category(categories):
+    """
+    Prompts the user to enter a category and validates the input.
+
+    Args:
+        categories (list): A list of valid expense categories.
+
+    Returns:
+        str: The category entered by the user. Returns None on error.
+    """
+    if not categories:
+        print("No categories available. Please set up categories first.")
+        return None
+
+    while True:
+        print("Available Categories:", ", ".join(categories))
+        category = input("Enter category: ")
+        if category in categories:
+            return category
+        else:
+            print("Invalid category. Please choose from the list.")
+
+def add_expense(expenses, categories):
+    """
+    Adds a new expense to the list of expenses.
+
+    Args:
+        expenses (list): The list of expenses.
+        categories (list): The list of valid expense categories.
+    """
+    date = get_valid_date()
+    if date is None:
+        print("Failed to add expense: Invalid date.")
+        return
+
+    amount = get_valid_amount()
+    if amount is None:
+        print("Failed to add expense: Invalid amount.")
+        return
+
+    category = get_valid_category(categories)
+    if category is None:
+        print("Failed to add expense: Invalid category.")
+        return
+
+    description = input("Enter description: ")
+    expense = {"date": date.isoformat(), "amount": amount, "category": category, "description": description}
+    expenses.append(expense)
+    print("Expense added successfully.")
+
+def view_expenses(expenses):
+    """
+    Retrieves and displays all stored expenses with validation.
+
+    Args:
+        expenses (list): The list of expenses.
+    """
+    if not expenses:
+        print("No expenses to display.")
+        return
+
+    print("\n--- All Expenses ---")
+    for expense in expenses:
+        # Validate that all required keys are present and their values are not None
+        if all(key in expense and expense[key] is not None for key in ["date", "category", "amount", "description"]):
+            try:
+                # Attempt to convert the date string to a date object for display
+                display_date = datetime.datetime.strptime(expense['date'], "%Y-%m-%d").date()
+                print(
+                    f"Date: {display_date}, "
+                    f"Category: {expense['category']}, "
+                    f"Amount: {expense['amount']}, "
+                    f"Description: {expense['description']}"
+                )
+            except ValueError:
+                print(f"Skipping invalid date format: {expense}")
+        else:
+            print("Skipping incomplete expense entry:", expense)
+
+def set_budget():
+    """
+    Prompts the user to enter their monthly budget and validates it.
+
+    Returns:
+        float: The monthly budget entered by the user, or None on error.
+    """
+    while True:
+        budget_str = input("Enter your monthly budget: ")
+        try:
+            budget = float(budget_str)
+            if budget > 0:
+                return budget
+            else:
+                print("Budget must be greater than zero.")
+        except ValueError:
+            print("Invalid budget format. Please enter a number.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
+
+def calculate_total_expenses(expenses):
+    """
+    Calculates the total expenses from the list of expenses.
+
+    Args:
+        expenses (list): The list of expenses.
+
+    Returns:
+        float: The total expenses, or 0 if there are no expenses or an error occurs.
+    """
+    total = 0
+    if not expenses:
+        return 0  # Return 0 if the list is empty
+
+    for expense in expenses:
+        # Check if the 'amount' key exists and its value is not None
+        if 'amount' in expense and expense['amount'] is not None:
+            try:
+                amount = float(expense['amount'])  # Ensure the amount is a float
+                total += amount
+            except ValueError:
+                print(f"Skipping expense with invalid amount: {expense}")
+                # Consider logging this error for further investigation
+        else:
+            print(f"Skipping expense with missing amount: {expense}")
+            # Consider logging this error.
+    return total
+
+def display_budget_status(budget, expenses):
+    """
+    Displays the budget status (remaining balance or budget exceeded warning).
+
+    Args:
+        budget (float): The user's monthly budget.
+        expenses (list): The list of expenses.
+    """
+    if budget is None:
+        print("No budget set.")
+        return
+
+    total_expenses = calculate_total_expenses(expenses)
+    remaining_balance = budget - total_expenses
+
+    if total_expenses > budget:
+        print("You have exceeded your budget!")
+        print(f"Total Expenses: {total_expenses:.2f}, Budget: {budget:.2f}, Overspent by: {total_expenses - budget:.2f}")
+    else:
+        print(f"You have {remaining_balance:.2f} left for the month.")
+        print(f"Total Expenses: {total_expenses:.2f}, Budget: {budget:.2f}")
+
+def save_expenses_to_csv(expenses, filename="expenses.csv"):
+    """
+    Saves expenses to a CSV file.
+
+    Args:
+        expenses (list): The list of expenses.
+        filename (str, optional): The name of the CSV file. Defaults to "expenses.csv".
+    """
+    if not expenses:
+        print("No expenses to save.")
+        return
+
+    try:
+        with open(filename, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Date", "Category", "Amount", "Description"])  # Write header row
+            for expense in expenses:
+                # Validate data before writing to CSV
+                if all(key in expense and expense[key] is not None for key in ["date", "category", "amount", "description"]):
+                    writer.writerow([expense['date'], expense['category'], expense['amount'], expense['description']])
+                else:
+                    print(f"Skipping incomplete expense entry: {expense}")
+        print("Expenses saved to CSV successfully.")
+    except Exception as e:
+        print(f"Error saving expenses to CSV: {e}")
+
+def load_expenses_from_csv(filename="expenses.csv"):
+    """
+    Loads expenses from a CSV file.
+
+    Args:
+        filename (str, optional): The name of the CSV file. Defaults to "expenses.csv".
+
+    Returns:
+        list: The list of expenses loaded from the CSV file.  Returns an empty list on error or if the file doesn't exist.
+    """
+    expenses = []
+    if not os.path.exists(filename):
+        print("No existing expense file found. Starting with empty expenses.")
+        return expenses # Return an empty list
+
+    try:
+        with open(filename, mode='r') as file:
+            reader = csv.reader(file)
+            next(reader, None)  # Skip the header row
+            for row in reader:
+                if len(row) == 4:
+                    try:
+                        #date_obj = datetime.datetime.strptime(row[0], "%Y-%m-%d").date()
+                        date_str = row[0]
+                        category = row[1]
+                        amount = float(row[2])
+                        description = row[3]
+                        expenses.append({
+                            "date": date_str,
+                            "category": category,
+                            "amount": amount,
+                            "description": description
+                        })
+                    except ValueError:
+                        print(f"Skipping row with invalid data: {row}")
+                else:
+                    print(f"Skipping row with incorrect number of columns: {row}")
+        print("Expenses loaded from CSV successfully.")
+        return expenses
+    except FileNotFoundError:
+        print("No existing expense file found. Starting with empty expenses.")
+        return []
+    except Exception as e:
+        print(f"Error loading expenses from CSV: {e}")
+        return []  # Return an empty list in case of other exceptions
+
+def display_menu():
+    """
+    Displays the main menu options to the user.
+    """
+    print("\nExpense Tracker Menu:")
+    print("1. Add Expense")
+    print("2. View Expenses")
+    print("3. View Budget Status")
+    print("4. Save Expenses to CSV")
+    print("5. Exit")
+
+def main():
+    """
+    Main function to run the expense tracker application.
+    """
+    expenses = load_expenses_from_csv()
+    categories = ["Food", "Housing", "Transportation", "Entertainment", "Utilities", "Other"]
+    budget = set_budget() # Load or set
+
+    while True:
+        display_menu()
+        choice = input("Enter your choice: ")
+
+        if choice == '1':
+            add_expense(expenses, categories)
+        elif choice == '2':
+            view_expenses(expenses)
+        elif choice == '3':
+            display_budget_status(budget, expenses)
+        elif choice == '4':
+            save_expenses_to_csv(expenses)
+        elif choice == '5':
+            print("Exiting...")
+            save_expenses_to_csv(expenses)
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
+if __name__ == "__main__":
+    main()
